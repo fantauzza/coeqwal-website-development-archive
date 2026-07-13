@@ -7,7 +7,6 @@
     ".": "./index.ts"
   },
   "scripts": {
-    "build": "tsc --project tsconfig.json",
     "lint": "pnpm exec eslint . --config=eslint.config.mjs",
     "check-types": "tsc --noEmit",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""

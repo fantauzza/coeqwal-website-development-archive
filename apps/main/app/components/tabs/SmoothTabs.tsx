@@ -1,169 +1,25 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
-import { motion, AnimatePresence } from "@repo/motion"
-import { Box, Typography, useTheme, alpha } from "@repo/ui/mui"
-import { TwoColumnInterstitial } from "@repo/ui"
+import { useCallback } from "react"
+import { motion } from "@repo/motion"
+import { Box, Typography, useTheme } from "@repo/ui/mui"
 
 import { TABS, TAB_ORDER, TabKey } from "../../types/tabs"
 import { useTabs } from "../../context/Tabs"
 import { useTabNavigation } from "../../hooks/useTabNavigation"
-//import { usePanelRoute } from "../../hooks/usePanelRoute"
-import { smoothScrollToCenter } from "../../utils/smoothScrollToCenter"
 import ExploreSubNav from "../../features/scenarioExplorer/explorer/tools/chrome/nav/ExploreSubNav"
 
-/** Renders the active tab's description panel content */
-function TabDescription({
-  tab,
-  onScrollPromptClick,
-}: {
-  tab: TabKey
-  onScrollPromptClick: () => void
-}) {
-  // Dormant call. Uncomment if TabDescription needs theme route state.
-  // usePanelRoute reads useSearchParams, so restoring this requires a
-  // Suspense boundary above SmoothTabs in page.tsx. Re-import from
-  // "../../hooks/usePanelRoute".
-  // usePanelRoute()
-
-  switch (tab) {
-    case "learn":
-      return (
-        <TwoColumnInterstitial
-          headline="Did you know that California has one of the most complex water systems in the world?"
-          body="Learn how water flows through California's Central Valley and the tools we use for water planning and decision-making"
-          onScrollPromptClick={onScrollPromptClick}
-          linkListLabel="Learn more about"
-          links={[
-            {
-              label: "How water moves through California",
-              href: "https://flow.coeqwal.org",
-              target: "_blank",
-              rel: "noopener noreferrer",
-            },
-            {
-              label: "How climate change affects California water",
-              href: "https://climate.coeqwal.org",
-              target: "_blank",
-              rel: "noopener noreferrer",
-            },
-            { label: "How water is managed in California", opacity: 0.65 },
-            { label: "How equity shapes California water", opacity: 0.65 },
-          ]}
-        />
-      )
-    case "explore":
-      return (
-        <TwoColumnInterstitial
-          headline="What if we managed water differently?"
-          body="Explore how water allocations change under different scenarios and hydroclimates — and discover new possibilities for California's water future."
-          linkListLabel=""
-          links={[]}
-        />
-      )
-    case "share":
-      return (
-        <TwoColumnInterstitial
-          headline="What scenarios align with your interests?"
-          body="Select scenario data and share what you've learned to shape our water future."
-          linkListLabel=""
-          links={[]}
-          scrollPrompt={null}
-        />
-      )
-  }
-}
-
 export default function SmoothTabs() {
-  const { state, tabsRef, isInTabsArea, setDescriptionsExpanded } = useTabs()
+  const { state, tabsRef, isInTabsArea } = useTabs()
   const { activeTab } = state
   const { navigateToTab } = useTabNavigation()
   const theme = useTheme()
 
-  // Track whether descriptions were opened by a tab click while docked
-  const [clickOpened, setClickOpened] = useState(false)
-
-  // Force-hide the interstitial before a programmatic scroll so that its
-  // collapsing height animation doesn't shift document positions mid-scroll.
-  const [forceHideDescriptions, setForceHideDescriptions] = useState(false)
-
-  // Show descriptions when expanded or opened by click, unless force-hidden.
-  const showDescriptions =
-    !forceHideDescriptions && (!isInTabsArea || clickOpened)
-
-  // Once the tabs have docked (isInTabsArea = true), the interstitial is gone
-  // from the flow and the force-hide flag is no longer needed.
-  useEffect(() => {
-    if (isInTabsArea) setForceHideDescriptions(false)
-  }, [isInTabsArea])
-
-  // Keep context in sync so ExploreSubNav can follow the same visibility.
-  useEffect(() => {
-    setDescriptionsExpanded(showDescriptions)
-  }, [showDescriptions, setDescriptionsExpanded])
-
-  // Expand interstitial when activeTab changes while docked (covers both
-  // tab clicks and AutoAdvanceFooter navigation).
-  const prevTabRef = useRef(activeTab)
-  useEffect(() => {
-    if (prevTabRef.current !== activeTab && isInTabsArea) {
-      setClickOpened(true)
-    }
-    prevTabRef.current = activeTab
-  }, [activeTab, isInTabsArea])
-
-  // When user scrolls after a click-open, retract the descriptions.
-  // Uses wheel/touchmove instead of scroll to avoid false triggers from
-  // animation-driven layout shifts (AutoHeight spring, ExploreSubNav entrance).
-  const scrollHandlerRef = useRef<(() => void) | null>(null)
-  useEffect(() => {
-    if (!clickOpened) return
-
-    const close = () => {
-      window.removeEventListener("wheel", close)
-      window.removeEventListener("touchmove", close)
-      scrollHandlerRef.current = null
-      setClickOpened(false)
-    }
-
-    const timer = setTimeout(() => {
-      scrollHandlerRef.current = close
-      window.addEventListener("wheel", close, { passive: true })
-      window.addEventListener("touchmove", close, { passive: true })
-    }, 600)
-
-    return () => {
-      clearTimeout(timer)
-      if (scrollHandlerRef.current) {
-        window.removeEventListener("wheel", scrollHandlerRef.current)
-        window.removeEventListener("touchmove", scrollHandlerRef.current)
-        scrollHandlerRef.current = null
-      }
-    }
-  }, [clickOpened])
-
-  // "Scroll to Explore" handler for the Learn interstitial.
-  // Closes the interstitial FIRST so its height animation doesn't shift
-  // document positions during the scroll, then scrolls after the animation.
-  const handleScrollPromptClick = useCallback(() => {
-    setForceHideDescriptions(true)
-    // 0.45s matches the AnimatePresence exit transition duration.
-    // Waiting for it to complete means the layout is stable when we scroll.
-    setTimeout(() => {
-      smoothScrollToCenter("central-valley-content")
-    }, 460)
-  }, [])
-
   const onSelect = useCallback(
     (tab: TabKey | undefined) => {
-      if (tab && tab !== activeTab) {
-        navigateToTab(tab)
-        if (isInTabsArea) setClickOpened(true)
-      } else if (isInTabsArea) {
-        setClickOpened((prev) => !prev)
-      }
+      if (tab && tab !== activeTab) navigateToTab(tab)
     },
-    [activeTab, navigateToTab, isInTabsArea],
+    [activeTab, navigateToTab],
   )
 
   // Keyboard support A11y: ArrowLeft/Right, Home/End
@@ -190,14 +46,18 @@ export default function SmoothTabs() {
         zIndex: theme.zIndex.appBar,
         // Pull the tabs up in normal flow so that, while still above
         // their sticky threshold, they overlap the bottom of the
-        // preceding ActionPanel. Once they enter the sticky state,
-        // `top` takes over and pins the docked nav-bar at the correct
-        // anchor, so this margin has no effect on the docked position.
-        marginTop: "-100px",
+        // preceding panel. Once they enter the sticky state, `top`
+        // takes over and pins the docked nav-bar at the correct anchor,
+        // so this margin has no effect on the docked position.
+        //
+        // Keep this overlap no larger than the opaque height of the
+        // floating tab row (~45px) plus the colored bar
+        // (collapsedTabHeight, 44px). If it exceeds that, the bottom of
+        // the preceding panel peeks out below the bar.
+        marginTop: "-80px",
         backgroundColor: isInTabsArea
-          ? alpha(theme.palette.text.primary, 0.75)
+          ? theme.palette.common.white
           : "transparent",
-        transition: "background-color 0.4s ease",
         pointerEvents: "auto",
       }}
     >
@@ -234,18 +94,16 @@ export default function SmoothTabs() {
               tabIndex={selected ? 0 : -1}
               sx={{
                 justifySelf: "center",
-                width: isInTabsArea ? "100%" : "85%",
+                width: "85%",
                 position: "relative",
                 border: "none",
                 backgroundColor: panelColor,
                 cursor: "pointer",
                 color: theme.palette.common.white,
-                borderTopLeftRadius: isInTabsArea ? 0 : 16,
-                borderTopRightRadius: isInTabsArea ? 0 : 16,
+                borderTopLeftRadius: 16,
+                borderTopRightRadius: 16,
                 borderBottomLeftRadius: 0,
                 borderBottomRightRadius: 0,
-                transition:
-                  "padding 0.4s ease, gap 0.4s ease, font-size 0.4s ease, width 0.4s ease, border-radius 0.4s ease",
                 display: "flex",
                 flexDirection: "column",
                 gap: 0,
@@ -284,14 +142,7 @@ export default function SmoothTabs() {
               <Typography
                 component="span"
                 variant="nav"
-                sx={{
-                  fontWeight: isInTabsArea ? 600 : 500,
-                  color: "inherit",
-                  fontSize: isInTabsArea
-                    ? undefined
-                    : "clamp(1.15rem, 0.95rem + 1vw, 1.5rem)",
-                  transition: "font-size 0.4s ease, color 0.4s ease",
-                }}
+                sx={{ color: "inherit" }}
               >
                 {label}
               </Typography>
@@ -300,43 +151,16 @@ export default function SmoothTabs() {
         })}
       </div>
 
-      {/* Full-width tab description - visible when expanded or opened by click */}
-      <AnimatePresence initial={false}>
-        {showDescriptions && (
-          <motion.div
-            key="tab-desc-wrapper"
-            initial={{ height: 0 }}
-            animate={{ height: "auto" }}
-            exit={{ height: 0 }}
-            transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
-            style={{
-              overflow: "hidden",
-              width: "100%",
-              marginTop: -1,
-              background: activeTabColor,
-            }}
-          >
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                style={{
-                  width: "100%",
-                  background: activeTabColor,
-                }}
-              >
-                <TabDescription
-                  tab={activeTab}
-                  onScrollPromptClick={handleScrollPromptClick}
-                />
-              </motion.div>
-            </AnimatePresence>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Full-width bar in the active tab color, spanning left to right,
+          in place of the old text aprons. */}
+      <Box
+        sx={{
+          width: "100%",
+          height: theme.layout.collapsedTabHeight,
+          backgroundColor: activeTabColor,
+          marginTop: "-1px",
+        }}
+      />
 
       <ExploreSubNav />
     </div>

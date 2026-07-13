@@ -83,10 +83,8 @@ export async function apiFetcher<T>(
 
       const response = await fetch(url, {
         signal: controller.signal,
-        headers: {
-          "Content-Type": "application/json",
-          ...headers,
-        },
+        // These are bodyless GETs, so no Content-Type is needed
+        headers: { ...headers },
       })
 
       clearTimeout(timeoutId)

@@ -80,13 +80,9 @@ const PANEL_POSITIONS = {
   paragraphTop: "15vh",
 } as const
 
-// Sticky top for the right-side panel stack, in pixels. The Learn
-// page's visual top-chrome (site header + any tab/sub-nav rows) is
-// ~90px on production builds. We add a small pad below that so the
-// panels sit just clear of the header stack. Kept as a single
-// explicit pixel constant (rather than adding theme tokens for every
-// sticky band) so it's trivial to tune for demo.
-const RIGHT_PANELS_TOP_PX = 110
+// Sticky top for the right-side panel stack, in pixels. Clears the site
+// header plus the tab row and the full-width tab color bar below it.
+const RIGHT_PANELS_TOP_PX = 140
 
 const ACCENT_TEXT_SX = {
   fontFamily: themeValues.fontFamily.accent,
